@@ -1,0 +1,8 @@
+# Virtual environments
+venv/
+.env
+__pycache__/
+*.pyc
+
+*.txt
+!requirements.txt
