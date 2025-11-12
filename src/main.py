@@ -29,3 +29,23 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 warnings.filterwarnings('ignore')
+
+filename = 'companyPolicies.txt'
+url = 'https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/6JDbUb_L3egv_eOkouY71A.txt'
+
+# Use wget to download the file
+wget.download(url, out=filename)
+print('file downloaded')
+
+def read_and_split_text(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        text = file.read()
+    # Split the text into paragraphs (simple split by newline characters)
+    paragraphs = text.split('\n')
+    # Filter out any empty paragraphs or undesired entries
+    paragraphs = [para.strip() for para in paragraphs if len(para.strip()) > 0]
+    return paragraphs
+
+# Read the text file and split it into paragraphs
+paragraphs = read_and_split_text('companyPolicies.txt')
+paragraphs[0:10]
