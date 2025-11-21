@@ -17,9 +17,7 @@ import numpy as np  # Numpy for numerical operations
 import random       # Randomness control for reproducibility
 
 # --- Visualization tools ---
-import matplotlib.pyplot as plt  # Plotting library
-from mpl_toolkits.mplot3d import Axes3D  # Enables 3D plotting with matplotlib
-from sklearn.manifold import TSNE        # Dimensionality reduction for visualization
+from utils.visualisation import tsne_plot
 
 # --- Warning suppression (optional but keeps notebooks tidy) NOT FOR PRODUCTION CODE ---
 def warn(*args, **kwargs):
@@ -136,4 +134,15 @@ tokens
 #  pass tokenized inputs into DPRContextEncoder using argument unpacking (**tokens)
 outputs=context_encoder(**tokens)
 print("Encoded Output: /n", outputs.pooler_output)
+
+
+''' t-SNE (t-Distributed Stochastic Neighbor Embedding)
+t-SNE is an effective method for visualizing high-dimensional data, making it particularly useful for analyzing outputs from DPRContextEncoder models. The DPRContextEncoder encodes passages into dense vectors that capture their semantic meanings within a high-dimensional (e.g 768dim) space. Applying t-SNE to these dense vectors allows you to reduce their dimensionality to two or three dimensions. This reduction creates a visual representation that preserves the relationships between passages, enabling you to explore clusters of similar passages and discern patterns that might otherwise remain hidden in the high-dimensional space. The resulting plots provide insights into how the model differentiates between different types of passages and reveal the inherent structure within the encoded data.'''
+
+# tsne_plot(outputs.pooler_output.detach().numpy())
+
+# # Samples 16 and 12 are closer to each other on the graph produced above
+# print("sample 16:", paragraphs[16])
+# print("sample 12:", paragraphs[12])
+'''Both samples discuss diversity. Rather than relying solely on visual inspection, distances between embeddings are employed to determine the relevance of retrieved documents or passages. This involves comparing the query’s embedding with the embeddings of candidate documents, enabling a precise and objective measure of relevance.'''
 
