@@ -253,3 +253,38 @@ def search_relevant_contexts(question, question_tokenizer, question_encoder, ind
     # Search the index to retrieve top k relevant contexts
     D, I = index.search(question_embedding, k)
     return D, I    # Returns tuple: Distances and indices of the top k relevant contexts.
+
+
+''' ENHANCING RESPONSE GENERATION WITH LLMS - Generating answers direct from LLMs
+'''
+
+# Load the tokenizer for the GPT-2 model.  
+# The tokenizer converts raw text into token IDs that the model can understand.
+tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
+
+# Load the GPT-2 language model itself.  
+# AutoModelForCausalLM loads a model designed for text generation (causal LM).
+model = AutoModelForCausalLM.from_pretrained("openai-community/gpt2")
+
+# Set the model's padding token ID to match the tokenizer's pad token.  
+# GPT-2 originally has no pad token, so this ensures generation functions  
+# (like model.generate) can pad sequences consistently without errors.
+# If the tokenizer also doesn’t have a pad token (GPT-2 doesn’t), you typically set:
+# tokenizer.pad_token = tokenizer.eos_token
+model.generation_config.pad_token_id = tokenizer.pad_token_id
+
+# input text
+contexts= "What is a large language model?"
+
+# Tokenize the input text to prepare it for the model
+inputs = tokenizer(contexts, return_tensors='pt', max_length=1024, truncation=True)
+print("Tokenized GPT Input text: ", inputs)
+
+# Utilize the LLM to generate text, ensuring that the output is in token indexes:
+summary_ids = model.generate(inputs['input_ids'], max_length=50, num_beams=4, early_stopping=True, pad_token_id=tokenizer.eos_token_id)
+# nb pad_token_id=tokenizer.eos_token_id is redundant due to setting model.generation_config.pad_token_id = tokenizer.pad_token_id above. It sets it for one call, the code above has already set it globally. With pad_token_id=tokenizer.eos_token_id, eos_token_id is the common workaround — GPT-2 treats padded regions simply as “end-of-text” rather than using the pad_token_id from the tokenizer.
+print("GPT Output Summary Token IDs: ", summary_ids)
+
+ # Decode and return the generated text
+answer = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+print("GPT Output Decoded Answer: ", answer)
