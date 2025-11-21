@@ -309,7 +309,32 @@ answer = generate_answer_without_context(question)
 print("GPT Without Context Output - Decoded Answer: ", answer)
 
 
+''' ENHANCING RESPONSE GENERATION WITH LLMS - Generating answers WITH DPR contexts
+'''
 
+question_encoder = DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+question_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+
+def generate_answer(question, contexts):
+    # Concatenate the retrieved contexts to form the input to GPT2
+    input_text = question + ' ' + ' '.join(contexts)   # the first ' ' leaves a gap between question and context, the second ' ' is what is inserted between each item in contexts as part of teh join statement
+    inputs = tokenizer(input_text, return_tensors='pt', max_length=1024, truncation=True)
+
+    # Generate output using GPT2
+    summary_ids = model.generate(inputs['input_ids'], max_new_tokens=50, min_length=40, length_penalty=2.0,
+                                 num_beams=4, early_stopping=True,pad_token_id=tokenizer.eos_token_id)
+    return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+question = "what is mobile policy?"
+
+_,I =search_relevant_contexts(question, question_tokenizer, question_encoder, index, k=5)   # _, I = D, I = Distance, Indices
+print(f"paragraphs indexs {I}")
+# The top paragraphs from the query and context retrieval are show here
+top_contexts = [paragraphs[idx] for idx in I[0]] 
+print(f"top_contexts {top_contexts}")
+
+answer = generate_answer(question, top_contexts)
+print("Generated Answer:", answer)
 
 
 ''' 
@@ -319,10 +344,11 @@ return_tensors = 'pt':	Return the output as PyTorch torch.tensors instead of Pyt
 max_length=1024:	    Sets the maximum number of tokens allowed.
 truncation=True:    	If the text is longer than max_length, cut the end off so it fits.      Without this, long text throws an error.
 
-MODEL.GENERATE(...) PARAMS
+MODEL.GENERATE(...) PARAMS 
 inputs['input_ids']:                    The token IDs from the tokenizer to feed into the model
 max_length=150:                         The generated sequence cannot exceed 150 tokens.
 min_length=40:                          The generated sequence must be at least 40 tokens long.
+ max_new_tokens=50                      “You may generate up to 50 new tokens, starting from the end of the input.” That’s it. It does not limit the total combined length of input + output. It only controls how many additional tokens the model can generate.max_length controls the total length, including the input. max_new_tokens=50 lets the model generate up to 50 tokens of new text, regardless of how long the input was.
 length_penalty=2.0:             
 num_beams=4:                            Enables beam search, which explores 4 possible continuations at each step. Higher = better quality but slower.
 early_stopping=True:                    Stop beam search when all beams reach the end-of-sentence token instead of filling up to max_length
