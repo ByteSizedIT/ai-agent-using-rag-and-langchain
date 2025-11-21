@@ -107,3 +107,33 @@ To translate these indices back into readable tokens, you can use the method con
 # for s in tokens_info['input_ids']:
 #    print(context_tokenizer.convert_ids_to_tokens(s))
 
+
+''' ENCODING
+The tokenized texts are then fed into the context_encoder. This model processes the inputs and produces a pooled output for each, effectively compressing the information of an entire text into a single, dense vector embedding that represents the semantic essence of the text.
+
+DPR (Dense Passage Retriever) models, including the ```DPRContextEncoder```, are based on the BERT architecture but specialize in dense passage retrieval. They differ from BERT in their training, which focuses on contrastive learning for retrieving relevant passages, while BERT is more general-purpose, handling various NLP tasks.
+'''
+
+context_encoder = DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
+
+'''
+The context_tokenizer and context_encoder work together to process text data, transforming paragraphs into contextual embeddings suitable for further NLP tasks. Here's how these components are applied to the first 20 paragraphs from a list:
+
+The context_tokenizer takes the first 20 paragraphs and converts each into a sequence of token IDs, formatted specifically as input to a PyTorch model. This process includes:
+Padding: To ensure uniformity, shorter text sequences are padded with zeros to reach the specified maximum length of 256 tokens.
+Truncation: Longer texts are cut off at 256 tokens to maintain consistency across all inputs.
+The tokenized data is then passed to the context_encoder, which processes these token sequences to produce contextual embeddings. Each output embedding vector from the encoder represents the semantic content of its corresponding paragraph, encapsulating key informational and contextual nuances.
+The encoder outputs a PyTorch tensor where each row corresponds to a different paragraph's embedding. The shape of this tensor, determined by the number of paragraphs processed and the embedding dimensions, reflects the detailed, contextualized representation of each paragraph's content.'''
+
+# shuffle samples so that the samples are not ordered based on the category they belong to
+random.seed(42)
+random.shuffle(paragraphs)
+
+# tokenize first 20 paragraphs with padding, truncation, and max_length=256
+tokens=context_tokenizer( paragraphs[:20], return_tensors='pt', padding=True, truncation=True, max_length=256) 
+tokens
+
+#  pass tokenized inputs into DPRContextEncoder using argument unpacking (**tokens)
+outputs=context_encoder(**tokens)
+print("Encoded Output: /n", outputs.pooler_output)
+
