@@ -172,7 +172,7 @@ print("Tokenizer loaded successfully!")
 # torch.cat(embeddings).detach().numpy().shape
 
 
-''' CONSOLIDATING TOKENIZATION, ENCODING AND AGGREGATION INTO ONE FUNCTION
+''' CONSOLIDATING CONTEXT TOKENIZATION, CONTEXT ENCODING AND AGGREGATION INTO ONE FUNCTION
 '''
 context_encoder = DPRContextEncoder.from_pretrained('facebook/dpr-ctx_encoder-single-nq-base')
 
@@ -209,3 +209,35 @@ context_embeddings_np = np.array(context_embeddings).astype('float32')
 # Create a FAISS index for the embeddings
 index = faiss.IndexFlatL2(embedding_dim)
 index.add(context_embeddings_np)  # Add the context embeddings to the index
+
+
+'''DPR QUESTION TOKENIZER AND ENCODER; SEARCHING THE FAISS INDEX
+NB DPR question encoder and DPR context encoder serve crucial roles within the DPR framework, they are optimized for different aspects of the retrieval process
+'''
+
+# Load DPR question encoder and tokenizer
+question_encoder = DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+question_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
+
+# Example question
+question = 'Drug and Alcohol Policy'
+question_inputs = question_tokenizer(question, return_tensors='pt')
+question_embedding = question_encoder(**question_inputs).pooler_output.detach().numpy()
+
+# Search the index to find the most relevant contexts
+D, I = index.search(question_embedding, k=5)  # Retrieve top 5 relevant contexts
+print("D:",D)
+print("I:",I)
+'''
+The output consists of two key components:
+
+D (Distances): This array contains the distances between the query embedding and the retrieved document embeddings. The distances measure the similarity between the query and each document - lower distances indicate higher relevance.
+
+I (Indices): This array holds the indices of the paragraphs within the paragraphs array that have been identified as the most relevant to the query - correspondING to the positions of th, allowing for easy retrieval of the actual text content.
+'''
+
+# print out Top 5 relevant contexts and their distance
+print("Top 5 relevant contexts:")
+for i, idx in enumerate(I[0]):
+    print(f"{i+1}: {paragraphs[idx]}")
+    print(f"distance {D[0][i]}\n")
