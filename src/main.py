@@ -146,3 +146,28 @@ t-SNE is an effective method for visualizing high-dimensional data, making it pa
 # print("sample 12:", paragraphs[12])
 '''Both samples discuss diversity. Rather than relying solely on visual inspection, distances between embeddings are employed to determine the relevance of retrieved documents or passages. This involves comparing the query’s embedding with the embeddings of candidate documents, enabling a precise and objective measure of relevance.'''
 
+''' AGGREGATION
+All individual embeddings generated from the texts are then aggregated into a single NumPy array. This aggregation is essential for subsequent processing steps, such as indexing, which facilitates efficient similarity searches.
+
+This methodological approach efficiently transforms paragraphs into a form that retains crucial semantic information in a compact vector format, making it ideal for the retrieval tasks necessary in this lab.
+'''
+
+# compile a list containing each sample, where each sample has specific dimensions
+embeddings=[]
+for text in paragraphs[0:5]:
+    inputs = context_tokenizer(text, return_tensors='pt', padding=True, truncation=True, max_length=256)
+    outputs = context_encoder(**inputs)
+    embeddings.append(outputs.pooler_output)
+    print("number of samples: ", len(embeddings))
+    print(" samples shape: ",  outputs.pooler_output.shape)
+
+# → concatenate tensors into a single 2D tensor, shape (num_samples, hidden_size)
+# → remove computation graph
+# → convert result into a NumPy array
+'''
+Every tensor produced by a model tracks gradients; 
+A gradient is a derivative. A derivative measures how fast something changes when you change something else. e.g. “If I change this weight a tiny bit, how much will the error change?”; Each operation is recorded, so PyTorch can later compute gradients during backpropagation; 
+Here is just encoding text or generating embeddings: this case is NOT training, doed NOT want gradients tracking gradients wastes memory and compute; don't want gradients for inference, because only computing embeddings: saves memory, prevents accidental backprop, makes it safe to convert to numpy; NumPy knows nothing about PyTorch’s computation graph; A graph-tracked tensor cannot be exported.
+# '''
+torch.cat(embeddings).detach().numpy().shape
+
