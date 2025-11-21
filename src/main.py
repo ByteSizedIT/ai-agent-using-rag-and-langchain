@@ -255,7 +255,7 @@ def search_relevant_contexts(question, question_tokenizer, question_encoder, ind
     return D, I    # Returns tuple: Distances and indices of the top k relevant contexts.
 
 
-''' ENHANCING RESPONSE GENERATION WITH LLMS - Generating answers direct from LLMs
+''' ENHANCING RESPONSE GENERATION WITH LLMS - Generating answers direct from LLMs without additional context
 '''
 
 # Load the tokenizer for the GPT-2 model.  
@@ -266,25 +266,102 @@ tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
 # AutoModelForCausalLM loads a model designed for text generation (causal LM).
 model = AutoModelForCausalLM.from_pretrained("openai-community/gpt2")
 
-# Set the model's padding token ID to match the tokenizer's pad token.  
-# GPT-2 originally has no pad token, so this ensures generation functions  
-# (like model.generate) can pad sequences consistently without errors.
-# If the tokenizer also doesn’t have a pad token (GPT-2 doesn’t), you typically set:
-# tokenizer.pad_token = tokenizer.eos_token
-model.generation_config.pad_token_id = tokenizer.pad_token_id
+# # Set the model's padding token ID to match the tokenizer's pad token.  
+# # GPT-2 originally has no pad token, so this ensures generation functions  
+# # (like model.generate) can pad sequences consistently without errors.
+# # If the tokenizer also doesn’t have a pad token (GPT-2 doesn’t), you typically set:
+# # tokenizer.pad_token = tokenizer.eos_token
+# model.generation_config.pad_token_id = tokenizer.pad_token_id
 
-# input text
-contexts= "What is a large language model?"
+# # input text
+# contexts= "What is a large language model?"
 
-# Tokenize the input text to prepare it for the model
-inputs = tokenizer(contexts, return_tensors='pt', max_length=1024, truncation=True)
-print("Tokenized GPT Input text: ", inputs)
+# # Tokenize the input text to prepare it for the model
+# inputs = tokenizer(contexts, return_tensors='pt', max_length=1024, truncation=True)
+# print("Tokenized GPT Input text: ", inputs)
 
-# Utilize the LLM to generate text, ensuring that the output is in token indexes:
-summary_ids = model.generate(inputs['input_ids'], max_length=50, num_beams=4, early_stopping=True, pad_token_id=tokenizer.eos_token_id)
-# nb pad_token_id=tokenizer.eos_token_id is redundant due to setting model.generation_config.pad_token_id = tokenizer.pad_token_id above. It sets it for one call, the code above has already set it globally. With pad_token_id=tokenizer.eos_token_id, eos_token_id is the common workaround — GPT-2 treats padded regions simply as “end-of-text” rather than using the pad_token_id from the tokenizer.
-print("GPT Output Summary Token IDs: ", summary_ids)
+# # Utilize the LLM to generate text, ensuring that the output is in token indexes:
+# summary_ids = model.generate(inputs['input_ids'], max_length=50, num_beams=4, early_stopping=True, pad_token_id=tokenizer.eos_token_id)
+# # nb pad_token_id=tokenizer.eos_token_id is redundant due to setting model.generation_config.pad_token_id = tokenizer.pad_token_id above. It sets it for one call, the code above has already set it globally. With pad_token_id=tokenizer.eos_token_id, eos_token_id is the common workaround — GPT-2 treats padded regions simply as “end-of-text” rather than using the pad_token_id from the tokenizer.
+# print("GPT Output Summary Token IDs: ", summary_ids)
 
- # Decode and return the generated text
-answer = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-print("GPT Output Decoded Answer: ", answer)
+#  # Decode and return the generated text
+# answer = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+# print("GPT Output Decoded Answer: ", answer)
+
+
+def generate_answer_without_context(question):
+    # Tokenize the input question
+    inputs = tokenizer(question, return_tensors='pt', max_length=1024, truncation=True)
+    
+    # Generate output directly from the question without additional context
+    summary_ids = model.generate(inputs['input_ids'], max_length=150, min_length=40, length_penalty=2.0,
+                                 num_beams=4, early_stopping=True,pad_token_id=tokenizer.eos_token_id)
+    
+    # Decode and return the generated text
+    answer = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return answer
+
+# example usage
+question = "what is mobile policy?"
+answer = generate_answer_without_context(question)
+
+print("GPT Without Context Output - Decoded Answer: ", answer)
+
+
+
+
+
+''' 
+TOKENIZER(...) PARAMETERS
+question:               The raw text string you want to tokenize; 
+return_tensors = 'pt':	Return the output as PyTorch torch.tensors instead of Python lists. This is needed because the model expects tensors. ('pt' = PyTorch.)
+max_length=1024:	    Sets the maximum number of tokens allowed.
+truncation=True:    	If the text is longer than max_length, cut the end off so it fits.      Without this, long text throws an error.
+
+MODEL.GENERATE(...) PARAMS
+inputs['input_ids']:                    The token IDs from the tokenizer to feed into the model
+max_length=150:                         The generated sequence cannot exceed 150 tokens.
+min_length=40:                          The generated sequence must be at least 40 tokens long.
+length_penalty=2.0:             
+num_beams=4:                            Enables beam search, which explores 4 possible continuations at each step. Higher = better quality but slower.
+early_stopping=True:                    Stop beam search when all beams reach the end-of-sentence token instead of filling up to max_length
+pad_token_id=tokenizer.eos_token_id:    Sets the padding token to EOS (end-of-sentence).
+GPT-2 doesn't have a pad token, so we reuse EOS to avoid warnings.
+
+TOKENIZER.DECODE(...) PARAMS
+summary_ids[0]:                        	The generated token ID sequence. (generate() returns shape [batch, seq_len].)
+skip_special_tokens=True	            Removes tokens like <pad>, <s>, </s>, [CLS], [SEP], depending on the model.
+'''
+
+'''
+BEAM SEARCH 
+Imagine the model is writing a sentence. At each step it predicts the next token.
+Greedy search:
+Always picks the single most likely next word.
+Beam search (num_beams = 4):
+Keeps the 4 best next-word choices, continues exploring each, and compares entire sentences later.
+Why?
+Because the most likely next word right now may lead to a worse sentence overall.
+Beam search explores more of the search space, so the final output is usually:
+✔ more coherent
+✔ more meaningful
+✔ less repetitive
+—but also slower.
+
+LENGTH PENALTY
+length_penalty > 1 → penalizes long sequences
+→ output becomes shorter, more concise
+length_penalty < 1 → rewards long sequences
+→ output becomes longer, more detailed
+length_penalty = 1 → neutral (no penalty)
+🔍 What does 2.0 specifically mean?
+2.0 is quite a strong penalty.
+It means:
+The longer the generated sequence gets
+The more the final score is divided by its length²
+So the model prefers shorter, sharper sentences
+This pairs well with your min_length=40 to guarantee:
+At least 40 tokens
+But not overly long rambling text
+'''
