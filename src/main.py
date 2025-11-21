@@ -187,3 +187,25 @@ def encode_contexts(text_list):
 
 # encode imported doc paragraphs to create embeddings.
 context_embeddings = encode_contexts(paragraphs)
+
+
+'''CREATING AND POPULATING THE FAISS INDEX
+Facebook AI Similarity Search (FAISS) is an efficient library developed by Facebook for similarity search and clustering of dense vectors.
+
+Efficiency: FAISS is designed for fast similarity search, which is particularly valuable when dealing with large datasets. It is highly suitable for tasks in natural language processing where retrieval speed is critical.
+
+Scalability: It effectively handles large volumes of data, maintaining performance even as dataset sizes increase.
+
+Index type: IndexFlatL2 is one of the simplest and most used indexes in FAISS. It computes the Euclidean distance (L2 norm) between the query vector and the dataset vectors to determine similarity.
+This type of index is particularly useful in retrieval systems where the task is to find the most relevant documents or information that closely matches the query vector.
+'''
+
+import faiss
+
+# Convert list of numpy arrays into a single numpy array
+embedding_dim = 768  # This should match the dimension of your embeddings
+context_embeddings_np = np.array(context_embeddings).astype('float32')
+
+# Create a FAISS index for the embeddings
+index = faiss.IndexFlatL2(embedding_dim)
+index.add(context_embeddings_np)  # Add the context embeddings to the index
