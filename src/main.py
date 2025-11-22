@@ -315,26 +315,67 @@ print("GPT Without Context Output - Decoded Answer: ", answer)
 question_encoder = DPRQuestionEncoder.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
 question_tokenizer = DPRQuestionEncoderTokenizer.from_pretrained('facebook/dpr-question_encoder-single-nq-base')
 
-def generate_answer(question, contexts):
-    # Concatenate the retrieved contexts to form the input to GPT2
-    input_text = question + ' ' + ' '.join(contexts)   # the first ' ' leaves a gap between question and context, the second ' ' is what is inserted between each item in contexts as part of teh join statement
+# def generate_answer(question, contexts):
+#     # Concatenate the retrieved contexts to form the input to GPT2
+#     input_text = question + ' ' + ' '.join(contexts)   # the first ' ' leaves a gap between question and context, the second ' ' is what is inserted between each item in contexts as part of teh join statement
+#     inputs = tokenizer(input_text, return_tensors='pt', max_length=1024, truncation=True)
+
+#     # Generate output using GPT2
+#     summary_ids = model.generate(inputs['input_ids'], max_new_tokens=50, min_length=40, length_penalty=2.0,
+#                                  num_beams=4, early_stopping=True,pad_token_id=tokenizer.eos_token_id)
+#     return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+
+# question = "what is mobile policy?"
+
+# _,I =search_relevant_contexts(question, question_tokenizer, question_encoder, index, k=5)   # _, I = D, I = Distance, Indices
+# print(f"paragraphs indexs {I}")
+# # The top paragraphs from the query and context retrieval are show here
+# top_contexts = [paragraphs[idx] for idx in I[0]] 
+# print(f"top_contexts {top_contexts}")
+
+# answer = generate_answer(question, top_contexts)
+# print("Generated Answer:", answer)
+
+
+''' ENHANCING RESPONSE GENERATION WITH LLMS - Generating answers WITH DPR contexts AND MODIFIED / TUNED PARAMETERS
+'''
+
+def generate_answer(contexts, max_len=50, min_len=40, length_penalty=2.0, num_beams=4):
+    # Concatenate the retrieved contexts to form the input to BAR
+    input_text = ' '.join(contexts)
     inputs = tokenizer(input_text, return_tensors='pt', max_length=1024, truncation=True)
 
     # Generate output using GPT2
-    summary_ids = model.generate(inputs['input_ids'], max_new_tokens=50, min_length=40, length_penalty=2.0,
-                                 num_beams=4, early_stopping=True,pad_token_id=tokenizer.eos_token_id)
+    summary_ids = model.generate(
+        inputs['input_ids'],
+        max_new_tokens=max_len,
+        min_length=min_len,
+        length_penalty=length_penalty,
+        num_beams=num_beams,
+        early_stopping=True
+    )
     return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
+# Define the question
 question = "what is mobile policy?"
 
-_,I =search_relevant_contexts(question, question_tokenizer, question_encoder, index, k=5)   # _, I = D, I = Distance, Indices
-print(f"paragraphs indexs {I}")
-# The top paragraphs from the query and context retrieval are show here
+# Retrieve relevant contexts
+_, I = search_relevant_contexts(question, question_tokenizer, question_encoder, index, k=5)
 top_contexts = [paragraphs[idx] for idx in I[0]] 
-print(f"top_contexts {top_contexts}")
 
-answer = generate_answer(question, top_contexts)
-print("Generated Answer:", answer)
+# Test different generation settings
+settings = [
+    (50, 50, 1.0, 2),
+    (120, 30, 2.0, 4),
+    (100, 20, 2.5, 6)
+]
+
+# Generate and print answers for each setting
+for setting in settings:
+    answer = generate_answer(top_contexts, *setting)
+    print(f"Settings: max_new_tokens={setting[0]}, min_length={setting[1]}, length_penalty={setting[2]}, num_beams={setting[3]}")
+    print("Generated Answer:", answer)
+    print("\n" + "="*80 + "\n")
 
 
 ''' 
